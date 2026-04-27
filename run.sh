@@ -29,7 +29,7 @@ fi
 service apache2 restart
 
 # Configure renderd threads
-sed -i -E "s/num_threads=[0-9]+/num_threads=${THREADS}/g" /etc/renderd.
+sed -i -E "s/num_threads=[0-9]+/num_threads=${THREADS}/g" /etc/renderd.conf
 
 if [ ! -e /data/tiles ]; then
 	mkdir /data/tiles
