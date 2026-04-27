@@ -97,11 +97,6 @@ RUN cd /var/www/html/ \
 # Icon
 RUN wget -O /var/www/html/favicon.ico https://www.openstreetmap.org/favicon.ico
 
-# Create volume directories
-RUN mkdir -p /run/renderd/ \
-  &&  chown  -R  renderer:  /run/renderd  \
-;
-
 RUN echo '[default]\n\
 URI=/tile/\n\
 TILEDIR=/data/tiles\n\
@@ -109,7 +104,8 @@ XML=/data/style/mapnik.xml\n\
 HOST=localhost\n\
 TILESIZE=256\n\
 MAXZOOM=20' >> /etc/renderd.conf \
- && sed -i 's,/usr/share/fonts/truetype,/usr/share/fonts,g' /etc/renderd.conf
+ && sed -i 's,/usr/share/fonts/truetype,/usr/share/fonts,g' /etc/renderd.conf \
+ && sed -i 's,/var/cache/renderd/tiles,/data/tiles,g' /etc/renderd.conf
 
 COPY --from=compiler-stylesheet /root/openstreetmap-carto /style
 

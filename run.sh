@@ -34,16 +34,19 @@ sed -i -E "s/num_threads=[0-9]+/num_threads=${THREADS}/g" /etc/renderd.conf
 if [ ! -e /data/tiles ]; then
 	mkdir /data/tiles
 fi
-chown renderer:renderer /data/tiles
+chown _renderd:_renderd /data/tiles
 
 # Run while handling docker stop's SIGTERM
-stop_handler() {
-    kill -TERM "$child"
-}
-trap stop_handler SIGTERM
+# stop_handler() {
+#     kill -TERM "$child"
+# }
+# trap stop_handler SIGTERM
+
+service renderer start
 
 sudo -u renderer renderd -f -c /etc/renderd.conf &
-child=$!
-wait "$child"
+tail -f /dev/null
+# child=$!
+# wait "$child"
 
 exit 0
