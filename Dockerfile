@@ -65,8 +65,6 @@ RUN export DEBIAN_FRONTEND=noninteractive \
 && apt-get autoremove --yes \
 && rm -rf /var/lib/{apt,dpkg,cache,log}/
 
-RUN adduser --disabled-password --gecos "" renderer
-
 # Get Noto Emoji Regular font, despite it being deprecated by Google
 RUN wget https://github.com/googlefonts/noto-emoji/blob/9a5261d871451f9b5183c93483cbd68ed916b1e9/fonts/NotoEmoji-Regular.ttf?raw=true --content-disposition -P /usr/share/fonts/
 

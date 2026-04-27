@@ -42,9 +42,8 @@ chown _renderd:_renderd /data/tiles
 # }
 # trap stop_handler SIGTERM
 
-service renderer start
+service renderd start
 
-sudo -u renderer renderd -f -c /etc/renderd.conf &
 tail -f /dev/null
 # child=$!
 # wait "$child"
