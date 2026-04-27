@@ -41,11 +41,10 @@ stop_handler() {
     # kill -TERM "$child"
 	service apache2 stop
 	service renderd stop
+	exit 0
 }
 trap stop_handler SIGTERM
 
 service renderd start
 
-exec tail -f /dev/null
-
-exit 0
+tail -f /dev/null
