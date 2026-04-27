@@ -44,8 +44,6 @@ chown _renderd:_renderd /data/tiles
 
 service renderd start
 
-tail -f /dev/null
-# child=$!
-# wait "$child"
+exec tail -f /dev/null
 
 exit 0
