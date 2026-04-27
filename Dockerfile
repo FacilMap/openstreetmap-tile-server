@@ -102,13 +102,13 @@ RUN mkdir -p /run/renderd/ \
   &&  chown  -R  renderer:  /run/renderd  \
 ;
 
-RUN echo '[default] \n\
-URI=/tile/ \n\
-TILEDIR=/data/tiles \n\
-XML=/data/style/mapnik.xml \n\
-HOST=localhost \n\
-TILESIZE=256 \n\
-MAXZOOM=20' >> /etc/renderd.conf \
+RUN echo '[default]\n\
+uri=/tile/\n\
+tiledir=/data/tiles\n\
+xml=/data/style/mapnik.xml\n\
+host=localhost\n\
+tilesize=256\n\
+maxzoom=20' >> /etc/renderd.conf \
  && sed -i 's,/usr/share/fonts/truetype,/usr/share/fonts,g' /etc/renderd.conf
 
 COPY --from=compiler-stylesheet /root/openstreetmap-carto /style
