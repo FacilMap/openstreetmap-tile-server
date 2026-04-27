@@ -58,6 +58,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
  #python3-shapely \
  #python3-pip \
  renderd \
+ rsync \
  sudo \
  #vim \
 && apt-get clean autoclean \
