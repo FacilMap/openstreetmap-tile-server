@@ -120,9 +120,10 @@ MAXZOOM=20' >> /etc/renderd.conf \
 
 COPY --from=compiler-stylesheet /root/openstreetmap-carto /style
 
-# Start running
 COPY run.sh /usr/local/bin/
 CMD ["/usr/local/bin/run.sh"]
 EXPOSE 80
-VOLUME /data/tiles
+VOLUME /data
 ENV NAME_MML=project.mml
+ENV THREADS=4
+ENV ALLOW_CORS=disabled

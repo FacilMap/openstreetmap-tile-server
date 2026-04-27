@@ -2,7 +2,7 @@
 
 set -xeuo pipefail
 
-rsync -rlt /style/ /data/style/
+rsync -rlt --delete /style/ /data/style/
 
 MML_FILE="/data/style/$NAME_MML"
 MAPNIK_XML=/data/style/mapnik.xml
@@ -22,14 +22,14 @@ fi
 rm -rf /tmp/*
 
 # Configure Apache CORS
-if [ "${ALLOW_CORS:-}" == "enabled" ] || [ "${ALLOW_CORS:-}" == "1" ]; then
+if [ "${ALLOW_CORS}" == "enabled" ] || [ "${ALLOW_CORS}" == "1" ]; then
     echo "export APACHE_ARGUMENTS='-D ALLOW_CORS'" >> /etc/apache2/envvars
 fi
 
 service apache2 restart
 
 # Configure renderd threads
-sed -i -E "s/num_threads=[0-9]+/num_threads=${THREADS:-4}/g" /etc/renderd.conf
+sed -i -E "s/num_threads=[0-9]+/num_threads=${THREADS}/g" /etc/renderd.conf
 
 # Run while handling docker stop's SIGTERM
 stop_handler() {
