@@ -13,7 +13,7 @@ if [ ! -e "$MML_FILE" ]; then
 fi
 
 # Compile MML file if mapnik.xml does not exist or it is older than the MML file
-if [[ ! -f "$OUTPUT_FILE" ]] || [[ "$MML_FILE" -nt "$OUTPUT_FILE" ]]; then
+if [[ ! -f "$MAPNIK_XML" ]] || [[ "$MML_FILE" -nt "$MAPNIK_XML" ]]; then
 	carto "$MML_FILE" > "$MAPNIK_XML"
 	touch -r "$MML_FILE" "$MAPNIK_XML"
 fi
