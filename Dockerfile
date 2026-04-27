@@ -98,15 +98,7 @@ RUN wget -O /var/www/html/favicon.ico https://www.openstreetmap.org/favicon.ico
 
 # Create volume directories
 RUN mkdir -p /run/renderd/ \
-  &&  mkdir  -p  /data/style/  \
-  &&  mkdir  -p  /home/renderer/src/  \
-  &&  chown  -R  renderer:  /data/  \
-  &&  chown  -R  renderer:  /home/renderer/src/  \
   &&  chown  -R  renderer:  /run/renderd  \
-  &&  mv  /var/cache/renderd/tiles/            /data/tiles/     \
-  &&  chown  -R  renderer: /data/tiles \
-  &&  ln  -s  /data/style              /home/renderer/src/openstreetmap-carto  \
-  &&  ln  -s  /data/tiles              /var/cache/renderd/tiles                \
 ;
 
 RUN echo '[default] \n\

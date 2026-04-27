@@ -29,7 +29,12 @@ fi
 service apache2 restart
 
 # Configure renderd threads
-sed -i -E "s/num_threads=[0-9]+/num_threads=${THREADS}/g" /etc/renderd.conf
+sed -i -E "s/num_threads=[0-9]+/num_threads=${THREADS}/g" /etc/renderd.
+
+if [ ! -e /data/tiles ]; then
+	mkdir /data/tiles
+fi
+chown renderer:renderer /data/tiles
 
 # Run while handling docker stop's SIGTERM
 stop_handler() {
