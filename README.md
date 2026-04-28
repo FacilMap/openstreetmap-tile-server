@@ -168,17 +168,18 @@ for _, func in ipairs({
     "process_untagged_node", "process_untagged_way", "process_untagged_relation",
     "process_deleted_node", "process_deleted_way", "process_deleted_relation"
 }) do
+    local handlers = {}
     for _, processor in pairs(processors) do
-        -- Define each property only if at least one processor has a handler for it
         if processor[func] then
-            osm2pgsql[func] = function(object)
-                for _, processor in pairs(processors) do
-                    if processor[func] then
-                        processor[func](object)
-                    end
-                end
+            table.insert(handlers, processor[func])
+        end
+    end
+
+    if #handlers > 0 then
+        osm2pgsql[func] = function(object)
+            for _, handler in ipairs(handlers) do
+                handler(object)
             end
-            break
         end
     end
 end
