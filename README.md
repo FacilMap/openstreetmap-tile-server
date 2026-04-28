@@ -172,7 +172,7 @@ for _, func in ipairs({
         -- Define each property only if at least one processor has a handler for it
         if processor[func] then
             osm2pgsql[func] = function(object)
-                for _, processor in ipairs(processors) do
+                for _, processor in pairs(processors) do
                     if processor[func] then
                         processor[func](object)
                     end
