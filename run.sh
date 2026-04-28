@@ -38,7 +38,7 @@ chown _renderd:_renderd /data/tiles
 
 # Run while handling docker stop's SIGTERM
 stop_handler() {
-    kill -TERM "$child"
+    # kill -TERM "$child"
 	service apache2 stop
 	service renderd stop
 	exit 0
@@ -47,5 +47,4 @@ trap stop_handler SIGTERM
 
 service renderd start
 
-tail -f /dev/null &
-child=$!
+tail -f /dev/null
