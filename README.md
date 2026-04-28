@@ -168,11 +168,17 @@ for _, func in ipairs({
     "process_untagged_node", "process_untagged_way", "process_untagged_relation",
     "process_deleted_node", "process_deleted_way", "process_deleted_relation"
 }) do
-    osm2pgsql[func] = function(object)
-        for _, processor in ipairs(processors) do
-            if processor[func] then
-                processor[func](object)
+    for _, processor in pairs(processors) do
+        -- Define each property only if at least one processor has a handler for it
+        if processor[func] then
+            osm2pgsql[func] = function(object)
+                for _, processor in ipairs(processors) do
+                    if processor[func] then
+                        processor[func](object)
+                    end
+                end
             end
+            break
         end
     end
 end
