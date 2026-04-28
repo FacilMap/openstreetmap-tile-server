@@ -29,7 +29,7 @@ services:
         volumes:
             - ./postgis:/var/lib/postgresql/data
         healthcheck:
-            test: pg_isready -d o2p -U o2p
+            test: pg_isready -h localhost -d o2p -U o2p
             start_period: 60s
             start_interval: 1s
         restart: always
@@ -79,7 +79,7 @@ services:
         volumes:
             - ./postgis:/var/lib/postgresql/data
         healthcheck:
-            test: pg_isready -d o2p -U o2p
+            test: pg_isready -h localhost -d o2p -U o2p
             start_period: 60s
             start_interval: 1s
         restart: always
