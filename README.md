@@ -222,7 +222,7 @@ services:
         restart: always
 ```
 
-The container exposes its tiles on port `80`. To access them, set up a reverse proxy like traefik, or test the setup by publishing the port by using `ports: [8080:80]` for example.
+The container exposes its tiles on port `80`. To access them, set up a reverse proxy like traefik, or test the setup by publishing the port by using `ports: [8080:80]` for example. The tiles are served under `/tile/`. To show them on a Leaflet map for example, use `L.tileLayer("https://example.org/tile/{z}/{x}/{y}.png").addTo(map)`.
 
 The container expects to find the CartoCSS file in `/style/project.mml`. You can also use a different filename by setting the `NAME_MML` environment variable.
 
