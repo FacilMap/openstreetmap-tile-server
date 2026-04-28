@@ -248,6 +248,8 @@ In the CartoCSS file, you need to configure the `Datasource` of your layers to u
 
 The container will persist all its data, especially the rendered meta tiles, in its `/data` volume.
 
+_TODO: The osm2pgsql-replication script marks tiles as expired. We still need to handle that expiration here._
+
 ### Environment variables
 
 | Variable | Default value | Description |
