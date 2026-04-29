@@ -2,7 +2,7 @@
 
 set -xeuo pipefail
 
-socat UNIX-RECVFROM:/dev/log,fork STDOUT &
+rsyslogd -n &
 log_pid=$!
 
 rsync -rlt --delete /style/ /data/style/

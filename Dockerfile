@@ -41,7 +41,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
  node-carto \
  renderd \
  rsync \
- socat \
+ rsyslog \
  sudo \
 && apt-get clean autoclean \
 && apt-get autoremove --yes \
