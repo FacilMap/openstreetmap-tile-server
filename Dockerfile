@@ -53,11 +53,8 @@ RUN wget https://github.com/googlefonts/noto-emoji/blob/9a5261d871451f9b5183c934
 # For some reason this one is missing in the default packages
 RUN wget https://github.com/stamen/terrain-classic/blob/master/fonts/unifont-Medium.ttf?raw=true --content-disposition -P /usr/share/fonts/
 
-# Install python libraries
-# RUN pip3 install \
-#  requests \
-#  osmium \
-#  pyyaml
+# Configure rsyslog
+RUN echo "*.* -/dev/stdout" > /etc/rsyslog.d/50-default.conf
 
 # Configure Apache
 RUN echo "LoadModule tile_module /usr/lib/apache2/modules/mod_tile.so" >> /etc/apache2/conf-available/mod_tile.conf \
