@@ -2,7 +2,7 @@
 
 set -xeuo pipefail
 
-ps aux
+rm -f /run/rsyslogd.pid
 rsyslogd -n &
 log_pid=$!
 
