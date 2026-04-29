@@ -2,6 +2,9 @@
 
 set -xeuo pipefail
 
+socat UNIX-RECVFROM:/dev/log,fork STDOUT &
+log_pid=$!
+
 rsync -rlt --delete /style/ /data/style/
 
 MML_FILE="/data/style/$NAME_MML"
@@ -38,15 +41,13 @@ chown _renderd:_renderd /data/tiles
 
 # Run while handling docker stop's SIGTERM
 stop_handler() {
-    kill -TERM "$child"
 	service apache2 stop
 	service renderd stop
+	kill -TERM "$log_pid"
 	exit 0
 }
 trap stop_handler SIGTERM
 
 service renderd start
 
-tail -f /dev/null &
-child=$!
-wait "$child"
+wait "$log_pid"
