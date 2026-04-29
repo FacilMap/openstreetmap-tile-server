@@ -5,7 +5,10 @@ set -xeuo pipefail
 rsyslogd -n &
 log_pid=$!
 
-rsync -rlt --delete /style/ /data/style/
+changes="$(rsync -inrlt --delete --exclude=/mapnik.xml /style/ /data/style/)"
+if [ -n "$changes" ]; then
+	rsync -rlt --delete --exclude=/mapnik.xml /style/ /data/style/
+fi
 
 MML_FILE="/data/style/$NAME_MML"
 MAPNIK_XML=/data/style/mapnik.xml
@@ -15,8 +18,8 @@ if [ ! -e "$MML_FILE" ]; then
 	exit 1
 fi
 
-# Compile MML file if mapnik.xml does not exist or it is older than the MML file
-if [[ ! -f "$MAPNIK_XML" ]] || [[ "$MML_FILE" -nt "$MAPNIK_XML" ]]; then
+# Compile MML file if mapnik.xml does not exist or there have been changes in the folder
+if [[ ! -f "$MAPNIK_XML" ]] || [ -n "$changes" ]; then
 	carto "$MML_FILE" > "$MAPNIK_XML"
 	touch -r "$MML_FILE" "$MAPNIK_XML"
 fi
