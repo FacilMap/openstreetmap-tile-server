@@ -1,51 +1,31 @@
-FROM ubuntu:24.04 AS compiler-common
-ENV LANG C.UTF-8
-ENV LC_ALL C.UTF-8
+FROM ubuntu:24.04
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
 
 RUN export DEBIAN_FRONTEND=noninteractive \
-&& apt-get update \
-&& apt-get install -y --no-install-recommends \
- ca-certificates gnupg lsb-release locales \
- wget curl \
- git-core unzip unrar \
-&& locale-gen $LANG && update-locale LANG=$LANG \
-&& apt-get -y upgrade
-
-###########################################################################################################
-
-FROM compiler-common AS compiler-stylesheet
-RUN cd ~ \
-&& git clone --single-branch --branch v5.4.0 https://github.com/gravitystorm/openstreetmap-carto.git --depth 1 \
-&& cd openstreetmap-carto \
-&& sed -i 's/, "unifont Medium", "Unifont Upper Medium"//g' style/fonts.mss \
-&& sed -i 's/"Noto Sans Tibetan Regular",//g' style/fonts.mss \
-&& sed -i 's/"Noto Sans Tibetan Bold",//g' style/fonts.mss \
-&& sed -i 's/Noto Sans Syriac Eastern Regular/Noto Sans Syriac Regular/g' style/fonts.mss \
-&& rm -rf .git
-
-###########################################################################################################
-
-FROM compiler-common AS final
+	&& apt-get update \
+	&& apt-get -y upgrade \
+	&& apt-get install -y --no-install-recommends \
+		ca-certificates gnupg lsb-release locales \
+		wget curl \
+		git-core unzip unrar \
+		apache2 \
+		fonts-hanazono \
+		fonts-noto-cjk \
+		fonts-noto-hinted \
+		fonts-noto-unhinted \
+		fonts-unifont \
+		node-carto \
+		renderd \
+		rsync \
+		rsyslog \
+		sudo \
+	&& apt-get clean autoclean \
+	&& apt-get autoremove --yes \
+	&& rm -rf /var/lib/{apt,dpkg,cache,log}/ \
+	&& locale-gen $LANG && update-locale LANG=$LANG
 
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-
-# Get packages
-RUN export DEBIAN_FRONTEND=noninteractive \
-&& apt-get install -y --no-install-recommends \
- apache2 \
- fonts-hanazono \
- fonts-noto-cjk \
- fonts-noto-hinted \
- fonts-noto-unhinted \
- fonts-unifont \
- node-carto \
- renderd \
- rsync \
- rsyslog \
- sudo \
-&& apt-get clean autoclean \
-&& apt-get autoremove --yes \
-&& rm -rf /var/lib/{apt,dpkg,cache,log}/
 
 # Get Noto Emoji Regular font, despite it being deprecated by Google
 RUN wget https://github.com/googlefonts/noto-emoji/blob/9a5261d871451f9b5183c93483cbd68ed916b1e9/fonts/NotoEmoji-Regular.ttf?raw=true --content-disposition -P /usr/share/fonts/
@@ -55,37 +35,20 @@ RUN wget https://github.com/stamen/terrain-classic/blob/master/fonts/unifont-Med
 
 # Configure rsyslog. Disable privilege drop so that it has write access to /dev/stdout.
 RUN sed -i 's,^[$]PrivDrop,#$PrivDrop,g' /etc/rsyslog.conf \
- && echo "*.* -/dev/stdout" > /etc/rsyslog.d/50-default.conf
+	&& echo "*.* -/dev/stdout" > /etc/rsyslog.d/50-default.conf
 
 # Configure Apache
 RUN echo "LoadModule tile_module /usr/lib/apache2/modules/mod_tile.so" >> /etc/apache2/conf-available/mod_tile.conf \
-&& echo "LoadModule headers_module /usr/lib/apache2/modules/mod_headers.so" >> /etc/apache2/conf-available/mod_headers.conf \
-&& a2enconf mod_tile && a2enconf mod_headers
+	&& echo "LoadModule headers_module /usr/lib/apache2/modules/mod_headers.so" >> /etc/apache2/conf-available/mod_headers.conf \
+	&& a2enconf mod_tile && a2enconf mod_headers \
+	&& touch /etc/apache2/envvars.custom /etc/apache2/tile-configs.conf /var/www/html/maps.txt \
+	&& echo ". /etc/apache2/envvars.custom" >> /etc/apache2/envvars
 COPY apache.conf /etc/apache2/sites-available/000-default.conf
 RUN ln -sf /dev/stdout /var/log/apache2/access.log \
-&& ln -sf /dev/stderr /var/log/apache2/error.log
+	&& ln -sf /dev/stderr /var/log/apache2/error.log
 
 # leaflet
 COPY leaflet-demo.html /var/www/html/index.html
-RUN cd /var/www/html/ \
-&& wget https://github.com/Leaflet/Leaflet/releases/download/v1.8.0/leaflet.zip \
-&& unzip leaflet.zip \
-&& rm leaflet.zip
-
-# Icon
-RUN wget -O /var/www/html/favicon.ico https://www.openstreetmap.org/favicon.ico
-
-RUN echo '[default]\n\
-URI=/tile/\n\
-TILEDIR=/data/tiles\n\
-XML=/data/style/mapnik.xml\n\
-HOST=localhost\n\
-TILESIZE=256\n\
-MAXZOOM=20' >> /etc/renderd.conf \
- && sed -i 's,/usr/share/fonts/truetype,/usr/share/fonts,g' /etc/renderd.conf \
- && sed -i 's,/var/cache/renderd/tiles,/data/tiles,g' /etc/renderd.conf
-
-COPY --from=compiler-stylesheet /root/openstreetmap-carto /style
 
 COPY run.sh /usr/local/bin/
 CMD ["/usr/local/bin/run.sh"]
