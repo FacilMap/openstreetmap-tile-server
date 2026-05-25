@@ -81,7 +81,8 @@ for path in /style/*/; do
 
 	# Compile MML file if mapnik.xml does not exist or there have been changes in the folder
 	if [[ ! -f "$MAPNIK_XML" ]] || [ -n "$changes" ]; then
-		carto "$MML_FILE" > "$MAPNIK_XML"
+		rm -f "$MAPNIK_XML" # Delete it so that if carto fails, it is rerun the next time
+		carto "$MML_FILE" -f "$MAPNIK_XML"
 		touch -r "$MML_FILE" "$MAPNIK_XML"
 	fi
 done
