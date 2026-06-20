@@ -15,6 +15,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
 		fonts-noto-hinted \
 		fonts-noto-unhinted \
 		fonts-unifont \
+		jq \
 		node-carto \
 		renderd \
 		rsync \
@@ -41,7 +42,7 @@ RUN sed -i 's,^[$]PrivDrop,#$PrivDrop,g' /etc/rsyslog.conf \
 RUN echo "LoadModule tile_module /usr/lib/apache2/modules/mod_tile.so" >> /etc/apache2/conf-available/mod_tile.conf \
 	&& echo "LoadModule headers_module /usr/lib/apache2/modules/mod_headers.so" >> /etc/apache2/conf-available/mod_headers.conf \
 	&& a2enconf mod_tile && a2enconf mod_headers \
-	&& touch /etc/apache2/envvars.custom /etc/apache2/tile-configs.conf /var/www/html/maps.txt \
+	&& touch /etc/apache2/envvars.custom /etc/apache2/tile-configs.conf /var/www/html/maps.json \
 	&& echo ". /etc/apache2/envvars.custom" >> /etc/apache2/envvars
 COPY apache.conf /etc/apache2/sites-available/000-default.conf
 RUN ln -sf /dev/stdout /var/log/apache2/access.log \
@@ -54,6 +55,12 @@ COPY run.sh /usr/local/bin/
 CMD ["/usr/local/bin/run.sh"]
 EXPOSE 80
 VOLUME /data
-ENV NAME_MML=project.mml
-ENV THREADS=4
-ENV ALLOW_CORS=disabled
+
+ENV NAME_MML=project.mml \
+	THREADS=4 \
+	ALLOW_CORS=disabled \
+	MAXZOOM=20 \
+	DEMO_OPACITY=1 \
+	DEMO_VISIBLE=1 \
+	DEMO_MAPNIK=0 \
+	DEMO_ZINDEX=1

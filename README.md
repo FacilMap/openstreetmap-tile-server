@@ -31,7 +31,7 @@ services:
 
 The container expects to find CartoCSS files in `/style/*/project.mml` (or a different filename if `NAME_MML` is set, see below). For each folder in `/style`, a different map is rendered. Please use sensible folder names that do not contain any spaces or special characters. When the container is started, all folders in `/style` are copied to `/data/style` and a `mapnik.xml` style is generated for each. The `/etc/renderd.conf` file is generated with all the configured maps on container start. If you want to provide a custom `renderd.conf`, you can mount one as read-only, which causes its generation to be skipped.
 
-The container exposes its tiles on port `80`. To access them, set up a reverse proxy like traefik, or test the setup by publishing the port by using `ports: [8080:80]` for example. The tiles are served according to the name of their style folder, example, a map style configured in `/style/mymap` will be served under `/mymap/`. To show them on a Leaflet map for example, use `L.tileLayer("https://example.org/mymap/{z}/{x}/{y}.png", { maxZoom: 20 }).addTo(map)`.
+The container exposes its tiles on port `80`. To access them, set up a reverse proxy like traefik, or test the setup by publishing the port by using `ports: [8080:80]` for example. The tiles are served according to the name of their style folder, example, a map style configured in `/style/mymap` will be served under `/mymap/`. To show them on a Leaflet map for example, use `L.tileLayer("https://example.org/mymap/{z}/{x}/{y}.png", { maxZoom: 20 }).addTo(map)`. Accessing the tile server directly through the browser will show a demo page with a map containing all the configured map styles.
 
 In the CartoCSS file, you need to configure the `Datasource` of your layers to use the PostGIS server (see its [documentation](https://cartocss.readthedocs.io/en/latest/mml.html#datasource). Here is an example:
 ```json
@@ -58,6 +58,11 @@ _TODO: The osm2pgsql-replication script marks tiles as expired. We still need to
 | `MAXZOOM` or `MAXZOOM_mymap` | `20` | Max zoom level to render. Can be overridden for individual map styles. |
 | `THREADS` | `4` | Number of threads for the renderer to use. |
 | `ALLOW_CORS` | `disabled` | Set to `enabled` to enable HTTP headers that allow cross-origin requests to the tiles. |
+| `DEMO_MAPNIK` | `0` | `1`: Offer Mapnik layer on demo page; `2`: Offer and make visible by default. |
+| `DEMO_VISIBLE` or `DEMO_VISIBLE_mymap` | `1` | Set to `0` to hide a particular (or all) map style by default on the demo page. |
+| `DEMO_OPACITY` or `DEMO_OPACITY_mymap` | `1` | The opacity of the map style on the demo page. Example: `0.7` for overlays. |
+| `DEMO_ZINDEX` or `DEMO_ZINDEX_mymap` | `1` | The z-index of the map style on the demo page. |
+`
 
 ## License
 

@@ -39,12 +39,25 @@
 			const LeafletHash = window.LeafletHash = window.L.Hash;
 			window.L = L;
 
-			const maps = (await fetch("./maps.txt").then((res) => res.text())).split("\n").filter((m) => m);
+			const map = window.map = L.map('map');
+
+			const config = await fetch("./maps.json").then((res) => res.json());
 			const attribution = 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>';
+			const mapnikLayer = new L.TileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution });
 			const layers = {
-				Mapnik: new L.TileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution }),
-				...Object.fromEntries(maps.map((m) => [m, new L.TileLayer(`/${encodeURIComponent(m)}/{z}/{x}/{y}.png`, { maxZoom: 23, attribution })]))
-			}
+				...config.mapnik > 0 ? {
+					Mapnik: config.mapnik === 2 ? mapnikLayer.addTo(map) : mapnikLayer
+				} : {},
+				...Object.fromEntries(Object.entries(config.maps).map(([k, m]) => {
+					const layer = new L.TileLayer(`/${encodeURIComponent(k)}/{z}/{x}/{y}.png`, {
+						maxZoom: m.maxZoom,
+						opacity: m.opacity,
+						zIndex: m.zIndex,
+						attribution
+					});
+					return [k, m.visible ? layer.addTo(map) : layer];
+				}))
+			};
 
 			// LeafletHash with a 4th parameter to persist the active layers
 			class CustomHash extends LeafletHash {
@@ -78,7 +91,6 @@
 				}
 			}
 
-			const map = window.map = L.map('map');
 			new CustomHash(map).update();
 			if (!map._loaded) {
 				map.setView([0, 0], 3);

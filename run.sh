@@ -9,13 +9,12 @@ log_pid=$!
 get_var() {
 	local var="$1"
 	local override="${var}_$2"
+	local fallback="fallback_${var}"
 
 	if [[ -v "$override" ]]; then
 		echo "${!override}"
-	elif [[ $# -le 2 ]] || [[ -v "$var" ]]; then
-		echo "${!var}"
 	else
-		echo "$3"
+		echo "${!var}"
 	fi
 }
 
@@ -104,7 +103,7 @@ font_dir_recurse=true
 EOF
 
 		for i in "${maps[@]}"; do
-			maxzoom="$(get_var MAXZOOM "$i" 20)"
+			maxzoom="$(get_var MAXZOOM "$i")"
 			cat <<EOF
 
 [map-$i]
@@ -127,9 +126,19 @@ if can_write /etc/apache2/tile-configs.conf; then
 	) > /etc/apache2/tile-configs.conf
 fi
 
-# Generate /var/www/html/maps.txt
-if can_write /var/www/html/maps.txt; then
-	printf '%s\n' "${maps[@]}" > /var/www/html/maps.txt
+# Generate /var/www/html/maps.json
+if can_write /var/www/html/maps.json; then
+	json="$(echo '{"maps":{}}' | jq --argjson mapnik "$DEMO_MAPNIK" '.mapnik = $mapnik')"
+	for i in "${maps[@]}"; do
+		maxzoom="$(get_var MAXZOOM "$i")"
+		opacity="$(get_var DEMO_OPACITY "$i")"
+		zindex="$(get_var DEMO_ZINDEX "$i")"
+		visible="$(get_var DEMO_VISIBLE "$i")"
+		[[ "$visible" = 1 ]] && visible_bool=true || visible_bool=false
+		json="$(echo "$json" | jq --arg i "$i" --argjson maxzoom "$maxzoom" --argjson opacity "$opacity" --argjson zindex "$zindex" --argjson visible "$visible_bool" '.maps.[$i] = { "maxZoom": $maxzoom, "opacity": $opacity, "zIndex": $zindex, "visible": $visible }')"
+	done
+
+	echo "$json" > /var/www/html/maps.json
 fi
 
 # Run while handling docker stop's SIGTERM
