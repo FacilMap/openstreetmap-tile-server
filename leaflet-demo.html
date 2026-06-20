@@ -18,12 +18,13 @@
         </style>
 
         <script type="importmap">
-			{
-				"imports": {
-					"leaflet": "https://esm.sh/leaflet"
-				}
-			}
-		</script>
+            {
+                "imports": {
+                    "leaflet": "https://esm.sh/leaflet",
+                    "leaflet-hash": "https://esm.sh/leaflet-hash"
+                }
+            }
+        </script>
     </head>
 
     <body>
@@ -32,15 +33,58 @@
         <script type="module">
             import * as L from "leaflet";
 
-            const map = L.map('map').setView([0, 0], 3);
+            // Workaround to make ancient leaflet-hash plugin work
+            window.L = { ...L };
+            await import("leaflet-hash");
+            const LeafletHash = window.LeafletHash = window.L.Hash;
+            window.L = L;
 
             const maps = (await fetch("./maps.txt").then((res) => res.text())).split("\n").filter((m) => m);
-
             const attribution = 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>';
-            new L.Control.Layers({}, {
+            const layers = {
                 Mapnik: new L.TileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution }),
                 ...Object.fromEntries(maps.map((m) => [m, new L.TileLayer(`/${encodeURIComponent(m)}/{z}/{x}/{y}.png`, { maxZoom: 23, attribution })]))
-            }, {
+            }
+
+            // LeafletHash with a 4th parameter to persist the active layers
+            class CustomHash extends LeafletHash {
+                formatHash(map) {
+                    return `${super.formatHash(map)}/${Object.keys(layers).filter((l) => map.hasLayer(layers[l])).join(";")}`;
+                }
+
+                parseHash(hash) {
+                    const args = hash.split("/");
+                    if (args.length > 3) {
+                        const visibleLayers = args[3] ? args[3].split(";") : [];
+                        for (const [key, layer] of Object.entries(layers)) {
+                            if (visibleLayers.includes(key)) {
+                                map.addLayer(layer);
+                            } else {
+                                map.removeLayer(layer);
+                            }
+                        }
+                    }
+                    return super.parseHash(args.slice(0, 3).join("/"));
+                }
+
+                startListening() {
+                    super.startListening();
+                    this.map.on("layeradd layerremove", this.onMapMove, this);
+                }
+
+                stopListening() {
+                    super.stopListening();
+                    this.map.off("layeradd layerremove", this.onMapMove, this);
+                }
+            }
+
+            const map = window.map = L.map('map');
+            new CustomHash(map).update();
+            if (!map._loaded) {
+                map.setView([0, 0], 3);
+            }
+
+            new L.Control.Layers({}, layers, {
                 collapsed: false
             }).addTo(map);
         </script>
