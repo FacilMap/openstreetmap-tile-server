@@ -9,12 +9,13 @@ log_pid=$!
 get_var() {
 	local var="$1"
 	local override="${var}_$2"
-	local fallback="fallback_${var}"
 
 	if [[ -v "$override" ]]; then
 		echo "${!override}"
-	else
+	elif [[ $# -le 2 ]] || [[ -v "$var" ]]; then
 		echo "${!var}"
+	else
+		echo "$3"
 	fi
 }
 
@@ -156,4 +157,29 @@ trap stop_handler SIGTERM
 service renderd start
 service apache2 start
 
-wait "$log_pid"
+declare -A expire_tables
+for i in "${maps[@]}"; do
+	expire_table="$(get_var EXPIRE_TABLE "$i" "${i//-/_}_expire")"
+
+	if psql -Aqtc "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = '${expire_table}';" | grep -q 1; then
+		echo "Using expire table ${expire_table} for ${i}" >&2
+		expire_tables["$i"]="$expire_table"
+	else
+		echo "Expire table ${expire_table} for ${i} not found, disabling tile expiration." >&2
+	fi
+done
+
+while true; do
+	for i in "${!expire_tables[@]}"; do
+		date="$(date -u +'%Y-%m-%dT%H:%M:%S')"
+		if psql -Aqtc "select zoom || '/' || x || '/' || y from \"${expire_tables["$i"]}\" where last <= '${date}';" | render_expired -m "map-$i"; then
+			if ! psql -Aqtc "delete from \"${expire_tables["$i"]}\" where last <= '${date}';"; then
+				echo "Cleaning up expiration table for $i failed." >&2
+			fi
+		else
+			echo "Expiring tiles for $i failed." >&2
+		fi
+	done
+
+	sleep "$EXPIRE_WAIT"
+done

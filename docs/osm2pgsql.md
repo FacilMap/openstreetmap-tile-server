@@ -9,17 +9,22 @@ Since the OpenStreetMap database changes all the time, the PostGIS database need
 Use the following docker-compose configuration to set up your PostGIS database:
 
 ```yaml
+x-vars:
+    - &database o2p
+    - &user o2p
+    - &password o2p
+
 services:
 	postgis:
 		image: postgis/postgis:latest
 		environment:
-			POSTGRES_DB: o2p
-			POSTGRES_USER: o2p
-			POSTGRES_PASSWORD: o2p
+			POSTGRES_DB: *database
+            POSTGRES_USER: *user
+            POSTGRES_PASSWORD: *password
 		volumes:
 			- ./postgis:/var/lib/postgresql/data
 		healthcheck:
-			test: pg_isready -h localhost -d o2p -U o2p
+			test: pg_isready -h localhost -d $$POSTGRES_DB -U $$POSTGRES_USER
 			start_period: 60s
 			start_interval: 1s
 		restart: always
@@ -32,9 +37,9 @@ services:
 			- ./region.osm.pbf:/region.osm.pbf:ro
 		environment:
 			PGHOST: postgis
-			PGDATABASE: o2p
-			PGUSER: o2p
-			PGPASSWORD: o2p
+			PGDATABASE: *database
+			PGUSER: *user
+			PGPASSWORD: *password
 		links:
 			- postgis
 		depends_on:
@@ -59,76 +64,62 @@ To start the PostGIS server, run `docker compose up -d`. To run the import, call
 To enable replication, use the following docker-compose configuration instead:
 
 ```yaml
+x-vars:
+    - &database o2p
+    - &user o2p
+    - &password o2p
+
 services:
 	postgis:
 		image: postgis/postgis:latest
 		environment:
-			POSTGRES_DB: o2p
-			POSTGRES_USER: o2p
-			POSTGRES_PASSWORD: o2p
+			POSTGRES_DB: *database
+            POSTGRES_USER: *user
+            POSTGRES_PASSWORD: *password
 		volumes:
 			- ./postgis:/var/lib/postgresql/data
 		healthcheck:
-			test: pg_isready -h localhost -d o2p -U o2p
+			test: pg_isready -h localhost -d $$POSTGRES_DB -U $$POSTGRES_USER
 			start_period: 60s
 			start_interval: 1s
 		restart: always
 
-	osm2pgsql:
-		image: iboates/osm2pgsql
-		volumes:
-			- ./styles:/styles:ro
-			- ./data:/data
-		environment:
-			PGHOST: postgis
-			PGDATABASE: o2p
-			PGUSER: o2p
-			PGPASSWORD: o2p
-			OSM2PGSQL_ARGS: -O flex -S /styles/main.lua --flat-nodes /data/flat_nodes.bin --slim
-		links:
-			- postgis
-		depends_on:
-			postgis:
-				condition: service_healthy
-		entrypoint: ""
-		command: ["tail", "-f", "/dev/null"]
-		restart: always
+	import: &import
+        image: iboates/osm2pgsql
+        volumes:
+            - .:/styles:ro
+            - ./data/osm2pgsql:/data
+            - ./region.osm.pbf:/region.osm.pbf:ro
+        environment:
+            PGHOST: postgis
+            PGDATABASE: *database
+            PGUSER: *user
+            PGPASSWORD: *password
+            OSM2PGSQL_ARGS: -O flex -S /styles/main.lua --flat-nodes /data/flat_nodes.bin --slim
+        links:
+            - postgis
+        depends_on:
+            postgis:
+                condition: service_healthy
+        entrypoint: ""
+        command: sh -c 'osm2pgsql $$OSM2PGSQL_ARGS /region.osm.pbf'
+        profiles: [import]
 
-	cron:
-		image: docker
-		volumes:
-			- /var/run/docker.sock:/var/run/docker.sock
-			- ./crontab:/etc/crontabs/root:ro
-		links:
-			- osm2pgsql
-		command: crond -f -d 7
-		restart: always
-
-	import:
-		extends: osm2pgsql
-		volumes:
-			- ./region.osm.pbf:/region.osm.pbf:ro
-		command: sh -c 'osm2pgsql $$OSM2PGSQL_ARGS /region.osm.pbf'
-		profiles: [import]
-
+	replication:
+        <<: *import
+        volumes:
+            - .:/styles:ro
+            - ./data/osm2pgsql:/data
+        command: sh -c 'while true; do osm2pgsql-replication update -- $$OSM2PGSQL_ARGS; sleep 60; done'
+        restart: always
+        profiles: []
 ```
-
-In this case, the `osm2pgsql` container will not do anything itself, but it will only function as a container for `cron` to run its commands in.
-
-Create the following `crontab` file:
-
-```crontab
-* * * * * docker exec postgis-osm2pgsql-1 osm2pgsql-replication update $OSM2PGSQL_ARGS 2>&1
-# newline required at the end of file
-```
-
-The command in the crontab assumes that your docker-compose configuration is located in a folder called `postgis`, which results in the container name `postgis-osm2pgsql-1`. Adjust the container name to what ever your `osm2pgsql` container is called.
-
-The crontab will run the replication script every minute. Feel free to configure a longer interval (for example use `*/10` instead of the first `*` for a 10-minute interval, or `0` for a 1-hour interval).
-
-When using replication, you also need to [set up tile expiration](#setting-up-tile-expiration) in your Lua script.
 
 The first time you set all of this up, you still need to import the data first by running `docker compose run --rm import`. See the section [Without replication](#without-replication) for the details.
+
+After importing the data, run `docker compose run --rm replication osm2pgsql-replication init` to set up the replication. After that, start the `replication` container to apply live updates every 60 seconds (to change the interval, adjust the command).
+
+When using replication, you also need to [set up tile expiration](#setting-up-tile-expiration) in your Lua script.
 
 
 ## Running multiple Lua scripts
@@ -138,42 +129,49 @@ If you want to run multiple tile servers or other services that require access t
 osm2pgsql only allows to specify one Lua script. To not have to paste the contents of all processor functions together in one script, here is a Lua script that you can use as your `main.lua` script. It will import all the `*.lua` scripts in the same folder, and for each processor function, it will run the function with the same name exported by each of those scripts.
 
 ```lua
+-- This Lua script combines all the scripts found under the following glob:
+local scripts = "*.lua"
+-- Each of those scripts must export a table that may contain any of the `process_node`, … functions as elements,
+-- rather than assigning those to the global `osm2pgsql` global object as you normally would in an osm2pgsql script.
+
 local script_name = debug.getinfo(1, "S").source:sub(2):match("([^/\\]+)$")
 local script_path = debug.getinfo(1, "S").source:sub(2):match("(.*/)") or ""
-package.path = script_path .. "?.lua;" .. package.path
 
 local processors = {}
-local handle = io.popen(string.format('ls -p "%s" | grep -v /', script_path))
+local handle = io.popen(string.format('ls -1p "%s"%s', script_path, scripts))
 if not handle then return end
 
+local package_path = package.path
 for filename in handle:lines() do
-	if filename:match("%.lua$") and filename ~= script_name then
-		local module_name = filename:gsub("%.lua$", "")
-		processors[module_name] = require(module_name)
-	end
+    if filename:match("%.lua$") and filename ~= script_name then
+        local module_name = filename:match("([^/]+)%.lua$")
+        package.path = filename:match("(.*/)") .. "?.lua;" .. package_path
+        processors[module_name] = require(module_name)
+    end
 end
+package.path = package_path
 
 handle:close()
 
 for _, func in ipairs({
-	"process_node", "process_way", "process_relation",
-	"process_untagged_node", "process_untagged_way", "process_untagged_relation",
-	"process_deleted_node", "process_deleted_way", "process_deleted_relation"
+    "process_node", "process_way", "process_relation",
+    "process_untagged_node", "process_untagged_way", "process_untagged_relation",
+    "process_deleted_node", "process_deleted_way", "process_deleted_relation"
 }) do
-	local handlers = {}
-	for _, processor in pairs(processors) do
-		if processor[func] then
-			table.insert(handlers, processor[func])
-		end
-	end
+    local handlers = {}
+    for _, processor in pairs(processors) do
+        if processor[func] then
+            table.insert(handlers, processor[func])
+        end
+    end
 
-	if #handlers > 0 then
-		osm2pgsql[func] = function(object)
-			for _, handler in ipairs(handlers) do
-				handler(object)
-			end
-		end
-	end
+    if #handlers > 0 then
+        osm2pgsql[func] = function(object)
+            for _, handler in ipairs(handlers) do
+                handler(object)
+            end
+        end
+    end
 end
 ```
 
@@ -181,14 +179,14 @@ Here is an example `tolls.lua` script that would be put in the same folder and c
 ```lua
 local M = {};
 
-local toll_lines = osm2pgsql.define_way_table('toll_lines', {
+local tolls_lines = osm2pgsql.define_way_table('tolls_lines', {
 	{ column = 'osm_id',   type = 'int8', not_null = true },
 	{ column = 'geom',     type = 'linestring', projection = 3857 },
 })
 
 function M.process_way(object)
 	if object.tags.toll == 'yes' then
-		toll_lines:insert({
+		tolls_lines:insert({
 			osm_id = object.id,
 			geom = object:as_linestring()
 		})
@@ -207,13 +205,13 @@ The tile renderer renders the tiles as soon as they are requested and then keeps
 Here is an example how you would define an expiration table and reference it in your geometry column:
 
 ```lua
-local toll_expire = osm2pgsql.define_expire_output({
+local tolls_expire = osm2pgsql.define_expire_output({
 	maxzoom = 20,
-	table = 'toll_expire'
+	table = 'tolls_expire'
 })
 
-local toll_lines = osm2pgsql.define_way_table('toll_lines', {
+local tolls_lines = osm2pgsql.define_way_table('tolls_lines', {
 	{ column = 'osm_id',   type = 'int8', not_null = true },
-	{ column = 'geom',     type = 'linestring', projection = 3857, expire = { { output = toll_expire } } },
+	{ column = 'geom',     type = 'linestring', projection = 3857, expire = { { output = tolls_expire } } },
 })
 ```

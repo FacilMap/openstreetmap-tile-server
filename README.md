@@ -1,18 +1,25 @@
 # openstreetmap-tile-server
 
-This image will start an Apache web server with [mod_tile](https://github.com/openstreetmap/mod_tile), which uses renderd/Mapnik to render tiles on the fly whenever they are requested for the first time. You need to provide one or more [CartoCSS](https://github.com/openstreetmap/mod_tile) `project.mml` files that define the map styles.
+This Docker image will generate and serve map tiles using Mapnik. It will do the following:
+* Start an Apache web server with [mod_tile](https://github.com/openstreetmap/mod_tile), which uses renderd/Mapnik to render tiles on the fly whenever they are requested for the first time.
+* Compile one or more [CartoCSS](https://github.com/openstreetmap/mod_tile) `project.mml` files for you (with support for environment variables) and use them to generate the tiles.
+* Serve a demo page where all the configured map styles can be viewed.
+* Frequently read and clear the tile expiration table(s) to expire tiles when something has changed during live updates.
 
-This repository is a fork of [Overv/openstreetmap-tile-server](https://github.com/Overv/openstreetmap-tile-server). There are some fundamental differences to the original:
-* This image does _not_ include a PostGIS database. Instead, it is intended to be used in conjunction with [osm2pgsql](https://osm2pgsql.org/), for example using the official [iboates/osm2pgsql](https://hub.docker.com/r/iboates/osm2pgsql) docker image. That will take care of importing OSM data into a PostGIS database and optionally keeping it up to date.
-* This image allows serving multiple maps with different style sheets.
+This image does _not_ import OpenStreetMap data and keep it up to date. By design, the PostGIS database and osm2pgsql import is separate from the tile server. Please [follow the tutorial](./docs/osm2pgsql.md) to set those up first. The following instructions assume that you have your PostGIS database running in a container called `postgis`.
 
-Please [follow the tutorial](./docs/osm2pgsql.md) to set up a PostGIS database with an osm2pgsql import first. The following configuration assumes that this database is available as a container called `postgis`.
+This repository has started as a fork of [Overv/openstreetmap-tile-server](https://github.com/Overv/openstreetmap-tile-server). While it serves the same purpose, a lot has been changed from the original image.
 
 ## Setting up the tile server
 
 Use the following docker-compose configuration to run the tile server:
 
 ```yaml
+x-vars:
+    - &database o2p
+    - &user o2p
+    - &password o2p
+
 services:
     tileserver:
         image: facilmap/openstreetmap-tile-server
@@ -22,9 +29,9 @@ services:
         environment:
             ALLOW_CORS: enabled
             PGHOST: postgis
-            PGDATABASE: o2p
-            PGUSER: o2p
-            PGPASSWORD: o2p
+            PGDATABASE: *database
+            PGUSER: *user
+            PGPASSWORD: *password
         links:
             - postgis
         depends_on:
@@ -35,7 +42,7 @@ services:
 
 The container expects to find CartoCSS files in `/style/*/project.mml` (or a different filename if `NAME_MML` is set, see below). For each folder in `/style`, a different map is rendered. Please use sensible folder names that do not contain any spaces or special characters. When the container is started, all folders in `/style` are copied to `/data/style` and a `mapnik.xml` style is generated for each. The `/etc/renderd.conf` file is generated with all the configured maps on container start. If you want to provide a custom `renderd.conf`, you can mount one as read-only, which causes its generation to be skipped.
 
-The container exposes its tiles on port `80`. To access them, set up a reverse proxy like traefik, or test the setup by publishing the port by using `ports: [8080:80]` for example. The tiles are served according to the name of their style folder, example, a map style configured in `/style/mymap` will be served under `/mymap/`. To show them on a Leaflet map for example, use `L.tileLayer("https://example.org/mymap/{z}/{x}/{y}.png", { maxZoom: 20 }).addTo(map)`. Accessing the tile server directly through the browser will show a demo page with a map containing all the configured map styles.
+The container exposes its tiles on port `80`. To access them, set up a reverse proxy like traefik, or test the setup by publishing the port by using `ports: [8080:80]` for example. The tiles are served according to the name of their style folder, for example, a map style configured in `/style/mymap` will be served under `/mymap/`. To show them on a Leaflet map for example, use `L.tileLayer("https://example.org/mymap/{z}/{x}/{y}.png", { maxZoom: 20 }).addTo(map)`. Accessing the tile server directly through the browser will show a demo page with a map containing all the configured map styles.
 
 In the CartoCSS file, you need to configure the `Datasource` of your layers to use the PostGIS server (see its [documentation](https://cartocss.readthedocs.io/en/latest/mml.html#datasource). Here is an example:
 ```json
@@ -54,8 +61,6 @@ The container will resolve any environment variables in your MML file (using `en
 
 The container will persist all its data, especially the rendered meta tiles, in its `/data` volume.
 
-_TODO: The osm2pgsql-replication script marks tiles as expired. We still need to handle that expiration here._
-
 ### Environment variables
 
 | Variable | Default value | Description |
@@ -68,7 +73,9 @@ _TODO: The osm2pgsql-replication script marks tiles as expired. We still need to
 | `DEMO_VISIBLE` or `DEMO_VISIBLE_mymap` | `1` | Set to `0` to hide a particular (or all) map style by default on the demo page. |
 | `DEMO_OPACITY` or `DEMO_OPACITY_mymap` | `1` | The opacity of the map style on the demo page. Example: `0.7` for overlays. |
 | `DEMO_ZINDEX` or `DEMO_ZINDEX_mymap` | `1` | The z-index of the map style on the demo page. |
-`
+| `EXPIRE_TABLE_mymap` | `mymap_expire` | The name of the expiration table for each style. If the table does not exist, tile expiration is disabled for that style. The default value is `${map}_expire`, where `${map}` is the name of the style folder with hyphens replaced by underscores. |
+| `EXPIRE_WAIT` | `60` | How many seconds to wait between each read of the tile expiration tables. |
+| `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` | | The [connection details](https://www.postgresql.org/docs/current/libpq-envars.html) to the PostGIS database to access the expiration table(s). Can also be used inside your MML file(s) (along with any other environment variables). |
 
 ## License
 

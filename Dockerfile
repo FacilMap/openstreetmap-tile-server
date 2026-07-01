@@ -19,6 +19,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
 		gettext-base \
 		jq \
 		node-carto \
+		postgresql \
 		renderd \
 		rsync \
 		rsyslog \
@@ -65,4 +66,5 @@ ENV NAME_MML=project.mml \
 	DEMO_OPACITY=1 \
 	DEMO_VISIBLE=1 \
 	DEMO_MAPNIK=0 \
-	DEMO_ZINDEX=1
+	DEMO_ZINDEX=1 \
+	EXPIRE_WAIT=60
