@@ -95,13 +95,14 @@ if can_write /etc/renderd.conf; then
 	(
 		cat <<EOF
 [renderd]
+pid_file=/run/renderd/renderd.pid
 stats_file=/run/renderd/renderd.stats
 socketname=/run/renderd/renderd.sock
 num_threads=$THREADS
 tile_dir=/data/tiles
 
 [mapnik]
-plugins_dir=/usr/lib/mapnik/3.1/input
+plugins_dir=/usr/lib/x86_64-linux-gnu/mapnik/4.2/input
 font_dir=/usr/share/fonts
 font_dir_recurse=true
 EOF
