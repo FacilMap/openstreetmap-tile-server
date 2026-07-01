@@ -76,12 +76,15 @@ for path in /style/*/; do
 	fi
 
 	MML_FILE="/data/style/$i/$name_mml"
+	MML_OUT_FILE="/data/style/$i/.project.out.mml"
 	MAPNIK_XML=/data/style/$i/mapnik.xml
 
 	# Compile MML file if mapnik.xml does not exist or there have been changes in the folder
 	if [[ ! -f "$MAPNIK_XML" ]] || [ -n "$changes" ]; then
 		rm -f "$MAPNIK_XML" # Delete it so that if carto fails, it is rerun the next time
-		carto "$MML_FILE" -f "$MAPNIK_XML"
+		cat "$MML_FILE" | envsubst > "$MML_OUT_FILE"
+		carto "$MML_OUT_FILE" -f "$MAPNIK_XML"
+		rm -f "$MML_OUT_FILE"
 		touch -r "$MML_FILE" "$MAPNIK_XML"
 	fi
 done

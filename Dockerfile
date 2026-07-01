@@ -15,6 +15,8 @@ RUN export DEBIAN_FRONTEND=noninteractive \
 		fonts-noto-hinted \
 		fonts-noto-unhinted \
 		fonts-unifont \
+		# gettext needed for envsubst command
+		gettext-base \
 		jq \
 		node-carto \
 		renderd \

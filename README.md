@@ -21,6 +21,10 @@ services:
             - ./style:/style:ro
         environment:
             ALLOW_CORS: enabled
+            PGHOST: postgis
+            PGDATABASE: o2p
+            PGUSER: o2p
+            PGPASSWORD: o2p
         links:
             - postgis
         depends_on:
@@ -37,14 +41,16 @@ In the CartoCSS file, you need to configure the `Datasource` of your layers to u
 ```json
 "Datasource": {
     "type": "postgis",
-    "host": "postgis",
-    "user": "o2p",
-    "password": "o2p",
-    "dbname": "o2p",
+    "host": "$PGHOST",
+    "user": "$PGUSER",
+    "password": "$PGPASSWORD",
+    "dbname": "$PGDATABASE",
     "table": "toll_lines",
     "geometry_field": "geom"
 }
 ```
+
+The container will resolve any environment variables in your MML file (using `envsubst`, as carto does not seem to support this).
 
 The container will persist all its data, especially the rendered meta tiles, in its `/data` volume.
 
