@@ -171,7 +171,7 @@ done
 
 while true; do
 	for i in "${!expire_tables[@]}"; do
-		date="$(date -u +'%Y-%m-%dT%H:%M:%S')"
+		date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 		if psql -Aqtc "select zoom || '/' || x || '/' || y from \"${expire_tables["$i"]}\" where last <= '${date}';" | render_expired -m "map-$i"; then
 			if ! psql -Aqtc "delete from \"${expire_tables["$i"]}\" where last <= '${date}';"; then
 				echo "Cleaning up expiration table for $i failed." >&2
