@@ -4,7 +4,6 @@ set -xeuo pipefail
 
 rm -f /run/rsyslogd.pid
 rsyslogd -n &
-log_pid=$!
 
 get_var() {
 	local var="$1"
@@ -150,7 +149,7 @@ fi
 stop_handler() {
 	service apache2 stop
 	service renderd stop
-	kill -TERM "$log_pid"
+	kill -TERM -$$
 	exit 0
 }
 trap stop_handler SIGTERM
