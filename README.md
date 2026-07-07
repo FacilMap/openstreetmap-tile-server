@@ -107,6 +107,7 @@ Some of the environment variables can be overridden for individual map styles. I
 | `EXPIRE_TABLE_mymap` | `mymap_expire` | The name of the expiration table for each style. If the table does not exist, tile expiration is disabled for that style. The default value is `${map}_expire`, where `${map}` is the name of the style folder with hyphens replaced by underscores. |
 | `EXPIRE_WAIT` | `60` | How many seconds to wait between each read of the tile expiration tables. |
 | `EXPIRE_DELETE_FROM` | `13` | Tiles starting from this zoom level will be deleted instead of rerendered on expiration. |
+| `EXPIRE_MAX_LOAD` | `16` | Tile expiration will pause while the load average on the server is above this threshold. |
 | `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` | | The [connection details](https://www.postgresql.org/docs/current/libpq-envars.html) to the PostGIS database to access the expiration table(s). Can also be used inside your MML file(s) (along with any other environment variables). |
 
 
