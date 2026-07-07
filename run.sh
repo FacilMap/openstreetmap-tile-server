@@ -121,6 +121,10 @@ EOF
 	) > /etc/renderd.conf
 fi
 
+# Start renderd
+mkdir -p /run/renderd && chown _renderd:_renderd /run/renderd
+su _renderd -s /bin/bash -c "renderd -f" &
+
 # Generate /etc/apache2/tile-configs.conf
 if can_write /etc/apache2/tile-configs.conf; then
 	(
@@ -148,13 +152,11 @@ fi
 # Run while handling docker stop's SIGTERM
 stop_handler() {
 	service apache2 stop
-	service renderd stop
 	kill -TERM -$$
 	exit 0
 }
 trap stop_handler SIGTERM
 
-renderd -f &
 service apache2 start
 
 declare -A expire_tables
@@ -188,8 +190,10 @@ else
 	done &
 fi
 
-wait -n
-
-echo "One of the services stopped. Exiting script."
-ps ax
-exit 1
+ps="$(ps ax)"
+if ! wait -n -p EX_PID; then
+	EX_STATUS=$?
+	echo "$ps" >&2
+	echo "Process $EX_PID exited with status $EX_STATUS. Exiting script."
+	exit 1
+fi
