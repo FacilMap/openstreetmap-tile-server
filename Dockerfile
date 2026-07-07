@@ -55,6 +55,7 @@ RUN ln -sf /dev/stdout /var/log/apache2/access.log \
 COPY leaflet-demo.html /var/www/html/index.html
 
 COPY run.sh /usr/local/bin/
+COPY prerender.sh /usr/local/bin/prerender
 CMD ["/usr/local/bin/run.sh"]
 EXPOSE 80
 VOLUME /data
