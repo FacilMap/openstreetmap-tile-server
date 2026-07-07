@@ -154,7 +154,7 @@ stop_handler() {
 }
 trap stop_handler SIGTERM
 
-service renderd start
+renderd -f &
 service apache2 start
 
 declare -A expire_tables
@@ -169,17 +169,27 @@ for i in "${maps[@]}"; do
 	fi
 done
 
-while true; do
-	for i in "${!expire_tables[@]}"; do
-		date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-		if psql -Aqtc "select zoom || '/' || x || '/' || y from \"${expire_tables["$i"]}\" where last <= '${date}';" | render_expired -m "map-$i" -c /etc/renderd.conf -d "$EXPIRE_DELETE_FROM"; then
-			if ! psql -Aqtc "delete from \"${expire_tables["$i"]}\" where last <= '${date}';"; then
-				echo "Cleaning up expiration table for $i failed." >&2
+if (( ${#expire_tables[@]} == 0 )); then
+	echo "No expire tables found, disabling expiration." >&2
+else
+	while true; do
+		for i in "${!expire_tables[@]}"; do
+			date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+			if psql -Aqtc "select zoom || '/' || x || '/' || y from \"${expire_tables["$i"]}\" where last <= '${date}';" | render_expired -m "map-$i" -c /etc/renderd.conf -d "$EXPIRE_DELETE_FROM"; then
+				if ! psql -Aqtc "delete from \"${expire_tables["$i"]}\" where last <= '${date}';"; then
+					echo "Cleaning up expiration table for $i failed." >&2
+				fi
+			else
+				echo "Expiring tiles for $i failed." >&2
 			fi
-		else
-			echo "Expiring tiles for $i failed." >&2
-		fi
-	done
+		done
 
-	sleep "$EXPIRE_WAIT"
-done
+		sleep "$EXPIRE_WAIT"
+	done &
+fi
+
+wait -n
+
+echo "One of the services stopped. Exiting script."
+ps ax
+exit 1
