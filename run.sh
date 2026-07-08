@@ -177,7 +177,10 @@ else
 	while true; do
 		for i in "${!expire_tables[@]}"; do
 			date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-			if psql -Aqtc "select zoom || '/' || x || '/' || y from \"${expire_tables["$i"]}\" where last <= '${date}';" | render_expired -m "map-$i" -c /etc/renderd.conf -d "$EXPIRE_DELETE_FROM" -l "$EXPIRE_MAX_LOAD"; then
+			threads="$(get_var EXPIRE_THREADS "$i" "$THREADS")"
+			delete_from="$(get_var EXPIRE_DELETE_FROM "$i")"
+			max_load="$(get_var EXPIRE_MAX_LOAD "$i")"
+			if psql -Aqtc "select zoom || '/' || x || '/' || y from \"${expire_tables["$i"]}\" where last <= '${date}';" | render_expired -m "map-$i" -c /etc/renderd.conf -d "$delete_from" -l "$max_load" -n "$threads"; then
 				if ! psql -Aqtc "delete from \"${expire_tables["$i"]}\" where last <= '${date}';"; then
 					echo "Cleaning up expiration table for $i failed." >&2
 				fi
