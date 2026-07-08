@@ -7,7 +7,7 @@ rsyslogd -n &
 
 get_var() {
 	local var="$1"
-	local override="${var}_$2"
+	local override="${var}_${2//-/_}"
 
 	if [[ -v "$override" ]]; then
 		echo "${!override}"

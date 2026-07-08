@@ -92,7 +92,7 @@ You can abort and resume the prerender script any time. It will only render tile
 
 ### Environment variables
 
-Some of the environment variables can be overridden for individual map styles. In the following table, `mymap` is used as an example folder name of an individual map style.
+Some of the environment variables can be overridden for individual map styles. In the following table, `mymap` is used as an example folder name of an individual map style (`-` is replaced with `_`, so for example to set the max zoom for folder `cycling-restrictions`, use `MAXZOOM_cycling_restrictions`).
 
 | Variable | Default value | Description |
 | -------- | ------------- | ----------- |
