@@ -110,6 +110,7 @@ Some of the environment variables can be overridden for individual map styles. I
 | `EXPIRE_MAX_LOAD` or `EXPIRE_MAX_LOAD_mymap` | `16` | Tile expiration will pause while the load average on the server is above this threshold. |
 | `EXPIRE_THREADS` or `EXPIRE_THREADS_mymap` | Value of `THREADS` | Number of threads for the renderer to use for rerendering expired tiles. |
 | `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` | | The [connection details](https://www.postgresql.org/docs/current/libpq-envars.html) to the PostGIS database to access the expiration table(s). Can also be used inside your MML file(s) (along with any other environment variables). |
+| `DEBUG` | `0` | Set to `1` to enable the output of all commands run by the script. |
 
 
 ## License

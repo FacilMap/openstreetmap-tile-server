@@ -1,6 +1,10 @@
 #!/bin/bash
 
-set -xeuo pipefail
+set -euo pipefail
+
+if [[ "$DEBUG" == "1" ]]; then
+	set -x
+fi
 
 rm -f /run/rsyslogd.pid
 rsyslogd -n &
