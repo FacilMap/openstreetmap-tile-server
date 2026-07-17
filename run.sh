@@ -171,47 +171,51 @@ trap stop_handler SIGTERM
 
 service apache2 start
 
-enable_expiration="false"
-for i in "${maps[@]}"; do
-	table_name="$(get_var EXPIRE_TABLE "$i" "$(get_key "$i")_expire%")"
-
-	declare -n "tables_ref=expire_tables_$(get_key "$i")"
-	mapfile -t tables_ref < <(psql -Aqtc "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name SIMILAR TO '${table_name}';")
-	if [ ${#tables_ref[@]} -gt 0 ]; then
-		echo "Using expire table(s) $(join ", " "${tables_ref[@]}") for ${i}" >&2
-		enable_expiration="true"
-	else
-		echo "No expire table for ${i} not found, disabling tile expiration." >&2
-	fi
-done
-
-if [[ "$enable_expiration" == "false" ]]; then
-	echo "No expire tables found, disabling expiration." >&2
+if [ "$EXPIRE_WAIT" -le 0 ]; then
+	echo "EXPIRE_WAIT is 0, disabling expiration." >&2
 else
-	while true; do
-		for i in "${maps[@]}"; do
-			declare -n "tables_ref=expire_tables_$(get_key "$i")"
-			if [[ -v tables_ref ]]; then
-				date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-				threads="$(get_var EXPIRE_THREADS "$i" "$THREADS")"
-				delete_from="$(get_var EXPIRE_DELETE_FROM "$i")"
-				max_load="$(get_var EXPIRE_MAX_LOAD "$i")"
+	enable_expiration="false"
+	for i in "${maps[@]}"; do
+		table_name="$(get_var EXPIRE_TABLE "$i" "$(get_key "$i")_expire%")"
 
-				mapfile -t queries < <(printf "SELECT zoom || '/' || x || '/' || y AS tile_path FROM %s WHERE last < '${date}'\n" "${tables_ref[@]}")
-				if psql -Aqtc "$(join " UNION " "${queries[@]}")" | render_expired -m "map-$i" -c /etc/renderd.conf -d "$delete_from" -l "$max_load" -n "$threads"; then
-					for table in "${tables_ref[@]}"; do
-						if ! psql -Aqtc "delete from \"${table}\" where last < '${date}';"; then
-							echo "Cleaning up expiration table ${table} failed." >&2
-						fi
-					done
-				else
-					echo "Expiring tiles for $i failed." >&2
+		declare -n "tables_ref=expire_tables_$(get_key "$i")"
+		mapfile -t tables_ref < <(psql -Aqtc "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name SIMILAR TO '${table_name}';")
+		if [ ${#tables_ref[@]} -gt 0 ]; then
+			echo "Using expire table(s) $(join ", " "${tables_ref[@]}") for ${i}" >&2
+			enable_expiration="true"
+		else
+			echo "No expire table for ${i} not found, disabling tile expiration." >&2
+		fi
+	done
+
+	if [[ "$enable_expiration" == "false" ]]; then
+		echo "No expire tables found, disabling expiration." >&2
+	else
+		while true; do
+			for i in "${maps[@]}"; do
+				declare -n "tables_ref=expire_tables_$(get_key "$i")"
+				if [[ -v tables_ref ]]; then
+					date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+					threads="$(get_var EXPIRE_THREADS "$i" "$THREADS")"
+					delete_from="$(get_var EXPIRE_DELETE_FROM "$i")"
+					max_load="$(get_var EXPIRE_MAX_LOAD "$i")"
+
+					mapfile -t queries < <(printf "SELECT zoom || '/' || x || '/' || y AS tile_path FROM %s WHERE last < '${date}'\n" "${tables_ref[@]}")
+					if psql -Aqtc "$(join " UNION " "${queries[@]}")" | render_expired -m "map-$i" -c /etc/renderd.conf -d "$delete_from" -l "$max_load" -n "$threads"; then
+						for table in "${tables_ref[@]}"; do
+							if ! psql -Aqtc "delete from \"${table}\" where last < '${date}';"; then
+								echo "Cleaning up expiration table ${table} failed." >&2
+							fi
+						done
+					else
+						echo "Expiring tiles for $i failed." >&2
+					fi
 				fi
-			fi
-		done
+			done
 
-		sleep "$EXPIRE_WAIT"
-	done &
+			sleep "$EXPIRE_WAIT"
+		done &
+	fi
 fi
 
 ps="$(ps ax)"
