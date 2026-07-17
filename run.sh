@@ -191,20 +191,22 @@ else
 	while true; do
 		for i in "${maps[@]}"; do
 			declare -n "tables_ref=expire_tables_$(get_key "$i")"
-			date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-			threads="$(get_var EXPIRE_THREADS "$i" "$THREADS")"
-			delete_from="$(get_var EXPIRE_DELETE_FROM "$i")"
-			max_load="$(get_var EXPIRE_MAX_LOAD "$i")"
+			if [[ -v tables_ref ]]; then
+				date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+				threads="$(get_var EXPIRE_THREADS "$i" "$THREADS")"
+				delete_from="$(get_var EXPIRE_DELETE_FROM "$i")"
+				max_load="$(get_var EXPIRE_MAX_LOAD "$i")"
 
-			mapfile -t queries < <(printf "SELECT zoom || '/' || x || '/' || y AS tile_path FROM %s WHERE last < '${date}'\n" "${tables_ref[@]}")
-			if psql -Aqtc "$(join " UNION " "${queries[@]}")" | render_expired -m "map-$i" -c /etc/renderd.conf -d "$delete_from" -l "$max_load" -n "$threads"; then
-				for table in "${tables_ref[@]}"; do
-					if ! psql -Aqtc "delete from \"${table}\" where last < '${date}';"; then
-						echo "Cleaning up expiration table ${table} failed." >&2
-					fi
-				done
-			else
-				echo "Expiring tiles for $i failed." >&2
+				mapfile -t queries < <(printf "SELECT zoom || '/' || x || '/' || y AS tile_path FROM %s WHERE last < '${date}'\n" "${tables_ref[@]}")
+				if psql -Aqtc "$(join " UNION " "${queries[@]}")" | render_expired -m "map-$i" -c /etc/renderd.conf -d "$delete_from" -l "$max_load" -n "$threads"; then
+					for table in "${tables_ref[@]}"; do
+						if ! psql -Aqtc "delete from \"${table}\" where last < '${date}';"; then
+							echo "Cleaning up expiration table ${table} failed." >&2
+						fi
+					done
+				else
+					echo "Expiring tiles for $i failed." >&2
+				fi
 			fi
 		done
 
